@@ -51,7 +51,7 @@ class KalshiClient:
         pages = 0
 
         while len(out) < max_items and pages < max_pages:
-            pages += 1
+            pages += 20
 
             data = self.markets(
                 status="open",
