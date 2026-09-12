@@ -9,6 +9,7 @@ load_dotenv()
 st.set_page_config(page_title='Kalshi Sports Edge', page_icon='📊', layout='wide')
 
 st.title('📊 Kalshi Sports Edge')
+st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
 
 with st.sidebar:
@@ -64,4 +65,4 @@ with st.expander('ℹ️ How the edge is calculated'):
 A pick only reaches **STRONG** when the edge clears the configured threshold and the model/data quality are sufficient. Otherwise the system says **WATCH** or **PASS**.
 
 The tracker scores predictions with win rate and Brier score. Brier score is especially useful because it evaluates probability quality, not just whether the final pick won.
-''')st.title('📊 Kalshi Sports Edge')st.write("DEBUG BUILD: NEW CODE ACTIVE")
+'''
