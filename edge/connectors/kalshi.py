@@ -38,55 +38,39 @@ class KalshiClient:
         r.raise_for_status()
         return r.json()
 
-    def all_open_markets(
+        def all_open_markets(
         self,
         max_items=300,
         max_pages=5,
     ):
-        """
-        Fetch normal open Kalshi markets while excluding
-        multivariate/combo markets at the API level.
-        """
+        import time
 
         out = []
         cursor = None
         pages = 0
 
-        while (
-            len(out) < max_items
-            and pages < max_pages
-        ):
+        while len(out) < max_items and pages < max_pages:
             pages += 1
 
             try:
                 data = self.markets(
                     status="open",
-                    limit=min(
-                        100,
-                        max_items - len(out),
-                    ),
+                    limit=min(100, max_items - len(out)),
                     cursor=cursor,
                 )
 
             except requests.HTTPError as e:
-                response = getattr(
-                    e,
-                    "response",
-                    None,
-                )
+                response = getattr(e, "response", None)
 
-                if (
-                    response is not None
-                    and response.status_code == 429
-                ):
-                    raise
+                if response is not None and response.status_code == 429:
+                    break
 
                 raise
 
-            markets = data.get(
-                "markets",
-                [],
-            )
+            markets = data.get("markets", [])
+
+            if not markets:
+                break
 
             out.extend(markets)
 
@@ -95,7 +79,7 @@ class KalshiClient:
             if not cursor:
                 break
 
-            time.sleep(0.75)
+            time.sleep(1.5)
 
         return out[:max_items]
 
