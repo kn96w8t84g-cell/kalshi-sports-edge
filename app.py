@@ -64,4 +64,4 @@ with st.expander('ℹ️ How the edge is calculated'):
 A pick only reaches **STRONG** when the edge clears the configured threshold and the model/data quality are sufficient. Otherwise the system says **WATCH** or **PASS**.
 
 The tracker scores predictions with win rate and Brier score. Brier score is especially useful because it evaluates probability quality, not just whether the final pick won.
-''')
+''')st.title('📊 Kalshi Sports Edge')
