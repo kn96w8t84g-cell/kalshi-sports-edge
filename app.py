@@ -12,27 +12,7 @@ st.title('📊 Kalshi Sports Edge')
 st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
 try:
-    from edge.connectors.kalshi import KalshiClient
-
-    raw_debug = KalshiClient().all_open_markets(20)
-
-    st.write("RAW KALSHI MARKETS:", len(raw_debug))
-
-    st.dataframe(
-        pd.DataFrame([
-            {
-                "ticker": m.get("ticker"),
-                "event_ticker": m.get("event_ticker"),
-                "title": m.get("title"),
-                "subtitle": m.get("subtitle"),
-            }
-            for m in raw_debug
-        ]),
-        hide_index=True,
-    )
-
-except Exception as e:
-    st.error(f"RAW KALSHI DEBUG ERROR: {e}")
+    
 with st.sidebar:
     st.header('Controls')
     min_edge = st.slider('Minimum edge', 0.00, 0.25, float(os.getenv('MIN_EDGE', '0.07')), 0.01)
