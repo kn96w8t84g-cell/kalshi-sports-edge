@@ -13,7 +13,6 @@ st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
 if st.button("🔎 Show Kalshi markets for debugging"):
     from edge.connectors.kalshi import KalshiClient
-    from edge.services.kalshi_parser import classify_market, market_prob
 
     try:
         debug_markets = KalshiClient().all_open_markets(
@@ -26,10 +25,15 @@ if st.button("🔎 Show Kalshi markets for debugging"):
         st.dataframe(
             pd.DataFrame([
                 {
-                    "title": m.get("title"),
-                    "sport": classify_market(m),
-                    "market_prob": market_prob(m),
                     "ticker": m.get("ticker"),
+                    "event_ticker": m.get("event_ticker"),
+                    "title": m.get("title"),
+                    "yes_bid": m.get("yes_bid"),
+                    "yes_ask": m.get("yes_ask"),
+                    "last_price": m.get("last_price"),
+                    "yes_bid_dollars": m.get("yes_bid_dollars"),
+                    "yes_ask_dollars": m.get("yes_ask_dollars"),
+                    "last_price_dollars": m.get("last_price_dollars"),
                 }
                 for m in debug_markets
             ]),
