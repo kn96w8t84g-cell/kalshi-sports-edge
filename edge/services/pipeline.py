@@ -23,16 +23,29 @@ from edge.config import CFBD_API_KEY
 def _market_rows(markets):
     rows = []
 
+    debug_counts = {
+        "total": 0,
+        "other": 0,
+        "no_price": 0,
+        "usable": 0,
+    }
+
     for m in markets:
+        debug_counts["total"] += 1
+
         sport = classify_market(m)
 
         if sport == "Other":
+            debug_counts["other"] += 1
             continue
 
         p = market_prob(m)
 
         if p is None:
+            debug_counts["no_price"] += 1
             continue
+
+        debug_counts["usable"] += 1
 
         rows.append(
             {
@@ -52,8 +65,9 @@ def _market_rows(markets):
             }
         )
 
-    return rows
+    print("MARKET DEBUG:", debug_counts)
 
+    return rows
 
 def _yes_entity(text, hits):
     """
