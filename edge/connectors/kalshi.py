@@ -1,4 +1,3 @@
-import time
 import requests
 
 from edge.config import BASE_URL, USER_AGENT
@@ -7,7 +6,9 @@ from edge.config import BASE_URL, USER_AGENT
 class KalshiClient:
     def __init__(self, base_url=BASE_URL):
         self.base_url = base_url.rstrip("/")
+
         self.s = requests.Session()
+
         self.s.headers.update(
             {
                 "User-Agent": USER_AGENT,
@@ -23,7 +24,6 @@ class KalshiClient:
         params = {
             "status": status,
             "limit": limit,
-        
         }
 
         if cursor:
@@ -36,52 +36,29 @@ class KalshiClient:
         )
 
         r.raise_for_status()
+
         return r.json()
 
-        def all_open_markets(
+    def all_open_markets(
         self,
         max_items=300,
-        max_pages=5,
+        max_pages=1,
     ):
-        import time
+        """
+        Temporary simple fetch for debugging.
+        Uses one Kalshi request only so errors are visible
+        and we avoid repeated rate-limit requests.
+        """
 
-        out = []
-        cursor = None
-        pages = 0
+        data = self.markets(
+            status="open",
+            limit=min(100, max_items),
+            cursor=None,
+        )
 
-        while len(out) < max_items and pages < max_pages:
-            pages += 1
+        markets = data.get("markets", [])
 
-            try:
-                data = self.markets(
-                    status="open",
-                    limit=min(100, max_items - len(out)),
-                    cursor=cursor,
-                )
-
-            except requests.HTTPError as e:
-                response = getattr(e, "response", None)
-
-                if response is not None and response.status_code == 429:
-                    raise
-
-                raise
-
-            markets = data.get("markets", [])
-
-            if not markets:
-                break
-
-            out.extend(markets)
-
-            cursor = data.get("cursor")
-
-            if not cursor:
-                break
-
-            time.sleep(1.5)
-
-        return out[:max_items]
+        return markets[:max_items]
 
     def orderbook(self, ticker):
         r = self.s.get(
@@ -90,4 +67,5 @@ class KalshiClient:
         )
 
         r.raise_for_status()
+
         return r.json()
