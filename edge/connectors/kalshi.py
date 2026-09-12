@@ -23,7 +23,7 @@ class KalshiClient:
         params = {
             "status": status,
             "limit": limit,
-            "mve_filter": "exclude",
+        
         }
 
         if cursor:
