@@ -1,44 +1,79 @@
 import re
 
 
+def _text_parts(m):
+    return [
+        str(m.get("title") or ""),
+        str(m.get("subtitle") or ""),
+        str(m.get("yes_sub_title") or ""),
+        str(m.get("no_sub_title") or ""),
+        str(m.get("ticker") or ""),
+        str(m.get("event_ticker") or ""),
+    ]
+
+
 def _market_text(m):
-    return " ".join(
-        str(m.get(k, ""))
-        for k in [
-            "ticker",
-            "event_ticker",
-            "title",
-            "subtitle",
-            "yes_sub_title",
-            "no_sub_title",
-        ]
-    ).lower()
+    return " ".join(_text_parts(m)).lower()
+
+
+def _looks_like_parlay_or_combo(text):
+    """
+    Reject giant combo/parlay style markets that contain many unrelated teams.
+    """
+
+    separators = [
+        ",yes ",
+        ",no ",
+        " parlay ",
+        " same game parlay ",
+    ]
+
+    if any(x in text for x in separators):
+        return True
+
+    # Very long titles with lots of commas are usually combo-style markets.
+    if len(text) > 220 and text.count(",") >= 3:
+        return True
+
+    # Too many repeated yes/no clauses usually means many legs.
+    if text.count(" yes ") >= 3 or text.count(" no ") >= 3:
+        return True
+
+    return False
 
 
 def classify_market(m):
     text = _market_text(m)
 
-    # Tennis
-    if any(
-        x in text
-        for x in [
-            "tennis",
-            "atp",
-            "wta",
-            "challenger",
-            "itf",
-            "us open",
-            "australian open",
-            "french open",
-            "wimbledon",
-        ]
-    ):
+    # Ignore giant combo/parlay markets.
+    if _looks_like_parlay_or_combo(text):
+        return "Other"
+
+    # -------------------------
+    # TENNIS
+    # -------------------------
+    tennis_terms = [
+        "tennis",
+        "atp",
+        "wta",
+        "challenger",
+        "itf",
+        "us open",
+        "australian open",
+        "french open",
+        "roland garros",
+        "wimbledon",
+    ]
+
+    if any(term in text for term in tennis_terms):
         return "Tennis"
 
-    # MLB / baseball
+    # -------------------------
+    # MLB
+    # -------------------------
     mlb_terms = [
         "mlb",
-        "baseball",
+        "major league baseball",
         "yankees",
         "dodgers",
         "mets",
@@ -70,18 +105,26 @@ def classify_market(m):
         "diamondbacks",
         "rockies",
     ]
-    if any(x in text for x in mlb_terms):
+
+    mlb_hits = sum(1 for term in mlb_terms if term in text)
+
+    # Require a baseball signal or at least 2 MLB team signals.
+    if (
+        "mlb" in text
+        or "baseball" in text
+        or "major league baseball" in text
+        or mlb_hits >= 2
+    ):
         return "MLB"
 
-    # College football
+    # -------------------------
+    # COLLEGE FOOTBALL
+    # -------------------------
     cfb_terms = [
         "college football",
         "ncaa football",
-        "ncaa",
         "cfb",
         "fbs",
-        "bulldogs",
-        "tigers",
         "buckeyes",
         "wolverines",
         "crimson tide",
@@ -94,11 +137,17 @@ def classify_market(m):
         "sooners",
         "aggies",
         "volunteers",
-        "hurricanes",
         "razorbacks",
-        "wildcats",
     ]
-    if any(x in text for x in cfb_terms):
+
+    cfb_hits = sum(1 for term in cfb_terms if term in text)
+
+    if (
+        "college football" in text
+        or "ncaa football" in text
+        or "cfb" in text
+        or cfb_hits >= 2
+    ):
         return "CFB"
 
     return "Other"
@@ -106,8 +155,7 @@ def classify_market(m):
 
 def market_prob(m):
     """
-    Return the best available YES probability from Kalshi.
-    Values are normalized to 0.00 - 1.00.
+    Return the best available YES probability as 0.00 - 1.00.
     """
 
     dollar_fields = [
@@ -125,10 +173,9 @@ def market_prob(m):
 
                 if 0 <= value <= 1:
                     return value
-            except (ValueError, TypeError):
+            except (TypeError, ValueError):
                 pass
 
-    # Fallback for APIs that return cents instead of dollars
     cent_fields = [
         "yes_ask",
         "last_price",
@@ -144,7 +191,7 @@ def market_prob(m):
 
                 if 0 <= value <= 100:
                     return value / 100.0
-            except (ValueError, TypeError):
+            except (TypeError, ValueError):
                 pass
 
     return None
@@ -152,8 +199,7 @@ def market_prob(m):
 
 def side_text(m):
     """
-    Try to extract the actual YES-side team/player instead of
-    defaulting to a vague market title.
+    Prefer the explicit YES-side label when Kalshi provides one.
     """
 
     candidates = [
@@ -174,7 +220,7 @@ def side_text(m):
 
 def clean_market_title(m):
     """
-    Build a cleaner text string for matching sports teams/players.
+    Build one clean matchup string for matching.
     """
 
     parts = [
@@ -184,7 +230,11 @@ def clean_market_title(m):
         m.get("no_sub_title"),
     ]
 
-    text = " ".join(str(x) for x in parts if x)
+    text = " ".join(
+        str(x).strip()
+        for x in parts
+        if x
+    )
 
     text = re.sub(r"\s+", " ", text).strip()
 
