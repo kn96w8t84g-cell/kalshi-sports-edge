@@ -11,13 +11,14 @@ st.set_page_config(page_title='Kalshi Sports Edge', page_icon='📊', layout='wi
 st.title('📊 Kalshi Sports Edge')
 st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
-if st.button("🔎 Show Kalshi markets for debugging"):
+if if st.button("🔎 Show Kalshi markets for debugging"):
     from edge.connectors.kalshi import KalshiClient
+    from edge.services.kalshi_parser import classify_market, market_prob
 
     try:
         debug_markets = KalshiClient().all_open_markets(
             max_items=20,
-            max_pages=8,
+            max_pages=1,
         )
 
         st.write("Markets returned:", len(debug_markets))
@@ -25,11 +26,10 @@ if st.button("🔎 Show Kalshi markets for debugging"):
         st.dataframe(
             pd.DataFrame([
                 {
-                    "ticker": m.get("ticker"),
-                    "event_ticker": m.get("event_ticker"),
                     "title": m.get("title"),
-                    "subtitle": m.get("subtitle"),
-                    "yes_side": m.get("yes_sub_title"),
+                    "sport": classify_market(m),
+                    "market_prob": market_prob(m),
+                    "ticker": m.get("ticker"),
                 }
                 for m in debug_markets
             ]),
