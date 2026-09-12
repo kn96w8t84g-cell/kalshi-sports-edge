@@ -79,7 +79,7 @@ class KalshiClient:
                     response is not None
                     and response.status_code == 429
                 ):
-                    break
+                    raise
 
                 raise
 
