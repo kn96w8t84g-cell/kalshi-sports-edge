@@ -39,28 +39,77 @@ class KalshiClient:
 
         return r.json()
 
-    def all_open_markets(
+        def all_open_markets(
         self,
         max_items=300,
-        max_pages=1,
+        max_pages=20,
     ):
-        """
-        Temporary simple fetch for debugging.
-        Uses one Kalshi request only so errors are visible
-        and we avoid repeated rate-limit requests.
-        """
+        import time
 
-        data = self.markets(
-            status="open",
-            limit=min(100, max_items),
-            cursor=None,
-        )
+        out = []
+        cursor = None
+        pages = 0
 
-        markets = data.get("markets", [])
+        while len(out) < max_items and pages < max_pages:
+            pages += 1
 
-        return markets[:max_items]
+            data = self.markets(
+                status="open",
+                limit=100,
+                cursor=cursor,
+            )
 
-    def orderbook(self, ticker):
+            markets = data.get("markets", [])
+
+            for market in markets:
+                ticker = str(market.get("ticker") or "").upper()
+                event_ticker = str(market.get("event_ticker") or "").upper()
+
+                if (
+                    "CROSSCATEGORY" in ticker
+                    or "CROSSCATEGORY" in event_ticker
+                    or "SHARD" in ticker
+                    or "SHARD" in event_ticker
+                ):
+                    continue
+
+                yes_ask = market.get("yes_ask")
+                yes_bid = market.get("yes_bid")
+                last_price = market.get("last_price")
+
+                yes_ask_dollars = market.get("yes_ask_dollars")
+                yes_bid_dollars = market.get("yes_bid_dollars")
+                last_price_dollars = market.get("last_price_dollars")
+
+                has_price = any(
+                    value not in (None, 0, 0.0, "0", "0.0000")
+                    for value in [
+                        yes_ask,
+                        yes_bid,
+                        last_price,
+                        yes_ask_dollars,
+                        yes_bid_dollars,
+                        last_price_dollars,
+                    ]
+                )
+
+                if not has_price:
+                    continue
+
+                out.append(market)
+
+                if len(out) >= max_items:
+                    break
+
+            cursor = data.get("cursor")
+
+            if not cursor:
+                break
+
+            time.sleep(1.0)
+
+        return out[:max_items]
+            def orderbook(self, ticker):
         r = self.s.get(
             f"{self.base_url}/markets/{ticker}/orderbook",
             timeout=20,
