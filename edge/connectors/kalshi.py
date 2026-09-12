@@ -95,22 +95,15 @@ class KalshiClient:
     def all_open_markets(
     self,
     max_items=300,
-    max_pages=12,
+    max_pages=8,
 ):
-    """
-    Page through Kalshi more conservatively to avoid rate limits.
-    """
-
     import time
 
     out = []
     cursor = None
     pages = 0
 
-    while (
-        len(out) < max_items
-        and pages < max_pages
-    ):
+    while len(out) < max_items and pages < max_pages:
         pages += 1
 
         try:
@@ -124,8 +117,7 @@ class KalshiClient:
             response = getattr(e, "response", None)
 
             if response is not None and response.status_code == 429:
-                time.sleep(2.5)
-                continue
+                break
 
             raise
 
@@ -145,8 +137,7 @@ class KalshiClient:
         if not cursor:
             break
 
-        # Small delay between pages so Kalshi doesn't throttle us.
-        time.sleep(0.35)
+        time.sleep(1.0)
 
     return out[:max_items]
     def orderbook(self, ticker):
