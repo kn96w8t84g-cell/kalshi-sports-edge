@@ -93,56 +93,62 @@ class KalshiClient:
         return False
 
     def all_open_markets(
-        self,
-        max_items=300,
-        max_pages=40,
+    self,
+    max_items=300,
+    max_pages=12,
+):
+    """
+    Page through Kalshi more conservatively to avoid rate limits.
+    """
+
+    import time
+
+    out = []
+    cursor = None
+    pages = 0
+
+    while (
+        len(out) < max_items
+        and pages < max_pages
     ):
-        """
-        Keep paging through Kalshi until we collect normal markets,
-        instead of stopping after the first combo/shard markets.
-        """
+        pages += 1
 
-        out = []
-
-        cursor = None
-
-        pages = 0
-
-        while (
-            len(out) < max_items
-            and pages < max_pages
-        ):
-            pages += 1
-
+        try:
             data = self.markets(
                 status="open",
                 limit=100,
                 cursor=cursor,
             )
 
-            markets = data.get(
-                "markets",
-                [],
-            )
+        except requests.HTTPError as e:
+            response = getattr(e, "response", None)
 
-            for market in markets:
-                if self._is_combo_market(
-                    market
-                ):
-                    continue
+            if response is not None and response.status_code == 429:
+                time.sleep(2.5)
+                continue
 
-                out.append(market)
+            raise
 
-                if len(out) >= max_items:
-                    break
+        markets = data.get("markets", [])
 
-            cursor = data.get("cursor")
+        for market in markets:
+            if self._is_combo_market(market):
+                continue
 
-            if not cursor:
+            out.append(market)
+
+            if len(out) >= max_items:
                 break
 
-        return out[:max_items]
+        cursor = data.get("cursor")
 
+        if not cursor:
+            break
+
+        # Small delay between pages so Kalshi doesn't throttle us.
+        time.sleep(0.35)
+
+    return out[:max_items]
     def orderbook(self, ticker):
         r = self.s.get(
             f"{self.base_url}/markets/{ticker}/orderbook",
