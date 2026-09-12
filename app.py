@@ -11,7 +11,33 @@ st.set_page_config(page_title='Kalshi Sports Edge', page_icon='📊', layout='wi
 st.title('📊 Kalshi Sports Edge')
 st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
-    
+    if st.button("🔎 Show Kalshi markets for debugging"):
+    from edge.connectors.kalshi import KalshiClient
+
+    try:
+        debug_markets = KalshiClient().all_open_markets(
+            max_items=20,
+            max_pages=8,
+        )
+
+        st.write("Markets returned:", len(debug_markets))
+
+        st.dataframe(
+            pd.DataFrame([
+                {
+                    "ticker": m.get("ticker"),
+                    "event_ticker": m.get("event_ticker"),
+                    "title": m.get("title"),
+                    "subtitle": m.get("subtitle"),
+                    "yes_side": m.get("yes_sub_title"),
+                }
+                for m in debug_markets
+            ]),
+            hide_index=True,
+        )
+
+    except Exception as e:
+        st.error(f"DEBUG ERROR: {e}")
 with st.sidebar:
     st.header('Controls')
     min_edge = st.slider('Minimum edge', 0.00, 0.25, float(os.getenv('MIN_EDGE', '0.07')), 0.01)
