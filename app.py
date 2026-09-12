@@ -11,7 +11,6 @@ st.set_page_config(page_title='Kalshi Sports Edge', page_icon='📊', layout='wi
 st.title('📊 Kalshi Sports Edge')
 st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
-try:
     
 with st.sidebar:
     st.header('Controls')
