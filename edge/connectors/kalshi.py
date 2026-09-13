@@ -63,19 +63,32 @@ class KalshiClient:
             markets = data.get("markets", [])
 
             for market in markets:
-                ticker = str(market.get("ticker") or "").upper()
+                                ticker = str(market.get("ticker") or "").upper()
                 event_ticker = str(market.get("event_ticker") or "").upper()
 
+                normalized = {
+                    str(key).strip().lower().replace(" ", "_"): value
+                    for key, value in market.items()
+                }
+
+                multivariate_ticker = str(
+                    normalized.get("multivariate_event_ticker") or ""
+                ).upper()
+
+                mve_collection = normalized.get("mve_collection_ticker")
+                mve_legs = normalized.get("mve_selected_legs")
+
                 if (
-    "CROSSCATEGORY" in ticker
-    or "CROSSCATEGORY" in event_ticker
-    or "SHARD" in ticker
-    or "SHARD" in event_ticker
-    or market.get("mve_collection_ticker")
-    or market.get("mve_selected_legs")
-    or market.get("multivariate_event_ticker")
-):
-    continue
+                    "CROSSCATEGORY" in ticker
+                    or "CROSSCATEGORY" in event_ticker
+                    or "CROSSCATEGORY" in multivariate_ticker
+                    or "SHARD" in ticker
+                    or "SHARD" in event_ticker
+                    or "SHARD" in multivariate_ticker
+                    or mve_collection
+                    or mve_legs
+                ):
+                    continue
 
                 yes_ask = market.get("yes_ask")
                 yes_bid = market.get("yes_bid")
