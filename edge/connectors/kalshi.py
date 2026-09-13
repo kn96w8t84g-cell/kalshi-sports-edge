@@ -67,12 +67,15 @@ class KalshiClient:
                 event_ticker = str(market.get("event_ticker") or "").upper()
 
                 if (
-                    "CROSSCATEGORY" in ticker
-                    or "CROSSCATEGORY" in event_ticker
-                    or "SHARD" in ticker
-                    or "SHARD" in event_ticker
-                ):
-                    continue
+    "CROSSCATEGORY" in ticker
+    or "CROSSCATEGORY" in event_ticker
+    or "SHARD" in ticker
+    or "SHARD" in event_ticker
+    or market.get("mve_collection_ticker")
+    or market.get("mve_selected_legs")
+    or market.get("multivariate_event_ticker")
+):
+    continue
 
                 yes_ask = market.get("yes_ask")
                 yes_bid = market.get("yes_bid")
