@@ -21,7 +21,9 @@ if st.button("🔎 Show Kalshi markets for debugging"):
         )
 
         st.write("Markets returned:", len(debug_markets))
-
+        if debug_markets:
+            st.write("RAW FIRST MARKET:")
+            st.json(debug_markets[0])
         st.dataframe(
             pd.DataFrame([
                 {
