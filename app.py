@@ -11,39 +11,100 @@ st.set_page_config(page_title='Kalshi Sports Edge', page_icon='📊', layout='wi
 st.title('📊 Kalshi Sports Edge')
 st.write("DEBUG BUILD: NEW CODE ACTIVE")
 st.caption('Independent sports probability research vs. Kalshi prices — paper/research mode only.')
-if st.button("🔎 Show Kalshi markets for debugging"):
+if st.button("🏟️ Check Kalshi sports feed"):
     from edge.connectors.kalshi import KalshiClient
+    from edge.services.kalshi_parser import classify_market
 
     try:
-        debug_markets = KalshiClient().all_open_markets(
-            max_items=20,
-            max_pages=1,
+        client = KalshiClient()
+
+        raw_data = client.markets(
+            status="open",
+            limit=100,
         )
 
-        st.write("Markets returned:", len(debug_markets))
-        if debug_markets:
-            st.write("RAW FIRST MARKET:")
-            st.json(debug_markets[0])
-        st.dataframe(
-            pd.DataFrame([
-                {
-                    "ticker": m.get("ticker"),
-                    "event_ticker": m.get("event_ticker"),
-                    "title": m.get("title"),
-                    "yes_bid": m.get("yes_bid"),
-                    "yes_ask": m.get("yes_ask"),
-                    "last_price": m.get("last_price"),
-                    "yes_bid_dollars": m.get("yes_bid_dollars"),
-                    "yes_ask_dollars": m.get("yes_ask_dollars"),
-                    "last_price_dollars": m.get("last_price_dollars"),
-                }
-                for m in debug_markets
-            ]),
-            hide_index=True,
+        raw_markets = raw_data.get("markets", [])
+
+        def is_combo(m):
+            normalized = {
+                str(k).strip().lower().replace(" ", "_"): v
+                for k, v in m.items()
+            }
+
+            ticker = str(
+                normalized.get("ticker") or ""
+            ).upper()
+
+            event_ticker = str(
+                normalized.get("event_ticker") or ""
+            ).upper()
+
+            multi = str(
+                normalized.get("multivariate_event_ticker") or ""
+            ).upper()
+
+            collection = str(
+                normalized.get("mve_collection_ticker") or ""
+            ).upper()
+
+            legs = normalized.get("mve_selected_legs")
+
+            text = " ".join([
+                ticker,
+                event_ticker,
+                multi,
+                collection,
+            ])
+
+            return (
+                "CROSSCATEGORY" in text
+                or "SHARD" in text
+                or bool(legs)
+            )
+
+        combo_count = sum(
+            1 for m in raw_markets
+            if is_combo(m)
         )
+
+        normal_count = len(raw_markets) - combo_count
+
+        usable = client.all_open_markets(
+            max_items=100,
+            max_pages=10,
+        )
+
+        tennis = sum(
+            1 for m in usable
+            if classify_market(m) == "Tennis"
+        )
+
+        mlb = sum(
+            1 for m in usable
+            if classify_market(m) == "MLB"
+        )
+
+        cfb = sum(
+            1 for m in usable
+            if classify_market(m) == "CFB"
+        )
+
+        st.success("Kalshi connection is working ✅")
+
+        st.write("### Feed status")
+        st.write(f"Raw markets checked: **{len(raw_markets)}**")
+        st.write(f"Combo markets rejected: **{combo_count}**")
+        st.write(f"Normal markets on first page: **{normal_count}**")
+        st.write(f"Usable priced markets found: **{len(usable)}**")
+
+        st.write("### Sports found")
+        st.write(f"🎾 Tennis: **{tennis}**")
+        st.write(f"⚾ MLB: **{mlb}**")
+        st.write(f"🏈 College Football: **{cfb}**")
 
     except Exception as e:
-        st.error(f"DEBUG ERROR: {e}")
+        st.error(f"Feed check failed: {e}")
+    
 with st.sidebar:
     st.header('Controls')
     min_edge = st.slider('Minimum edge', 0.00, 0.25, float(os.getenv('MIN_EDGE', '0.07')), 0.01)
