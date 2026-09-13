@@ -9,6 +9,12 @@ def _text_parts(m):
         str(m.get("no_sub_title") or ""),
         str(m.get("ticker") or ""),
         str(m.get("event_ticker") or ""),
+
+        # Event information added by the Kalshi connector
+        str(m.get("_event_title") or ""),
+        str(m.get("_event_subtitle") or ""),
+        str(m.get("_event_category") or ""),
+        str(m.get("_series_ticker") or ""),
     ]
 
 
@@ -17,9 +23,17 @@ def _market_text(m):
 
 
 def _looks_like_combo(m):
-    ticker = str(m.get("ticker") or "").upper()
-    event_ticker = str(m.get("event_ticker") or "").upper()
-    title = str(m.get("title") or "").lower()
+    ticker = str(
+        m.get("ticker") or ""
+    ).upper()
+
+    event_ticker = str(
+        m.get("event_ticker") or ""
+    ).upper()
+
+    title = str(
+        m.get("title") or ""
+    ).lower()
 
     blocked = [
         "CROSSCATEGORY",
@@ -34,8 +48,10 @@ def _looks_like_combo(m):
     ):
         return True
 
-    # Only reject truly huge multi-leg titles.
-    if len(title) > 300 and title.count(",") >= 5:
+    if (
+        len(title) > 300
+        and title.count(",") >= 5
+    ):
         return True
 
     return False
@@ -54,14 +70,17 @@ def classify_market(m):
         "wta",
         "challenger",
         "itf",
-        "us open",
+        "us open tennis",
         "australian open",
         "french open",
         "roland garros",
         "wimbledon",
     ]
 
-    if any(term in text for term in tennis_terms):
+    if any(
+        term in text
+        for term in tennis_terms
+    ):
         return "Tennis"
 
     # MLB
@@ -95,15 +114,23 @@ def classify_market(m):
         "reds",
         "diamondbacks",
         "rockies",
+        "giants",
+        "rangers",
+        "rays",
+        "tigers",
     ]
 
-    if any(term in text for term in mlb_terms):
+    if any(
+        term in text
+        for term in mlb_terms
+    ):
         return "MLB"
 
     # COLLEGE FOOTBALL
     cfb_terms = [
         "college football",
         "ncaa football",
+        "ncaaf",
         "cfb",
         "fbs",
         "alabama",
@@ -112,7 +139,6 @@ def classify_market(m):
         "michigan",
         "georgia",
         "texas a&m",
-        "texas",
         "notre dame",
         "usc",
         "ucla",
@@ -126,7 +152,10 @@ def classify_market(m):
         "university at albany",
     ]
 
-    if any(term in text for term in cfb_terms):
+    if any(
+        term in text
+        for term in cfb_terms
+    ):
         return "CFB"
 
     return "Other"
@@ -146,7 +175,7 @@ def market_prob(m):
             try:
                 value = float(value)
 
-                if 0 <= value <= 1:
+                if 0 < value <= 1:
                     return value
 
             except (TypeError, ValueError):
@@ -165,7 +194,7 @@ def market_prob(m):
             try:
                 value = float(value)
 
-                if 0 <= value <= 100:
+                if 0 < value <= 100:
                     return value / 100.0
 
             except (TypeError, ValueError):
@@ -193,6 +222,7 @@ def side_text(m):
 
 def clean_market_title(m):
     parts = [
+        m.get("_event_title"),
         m.get("title"),
         m.get("subtitle"),
         m.get("yes_sub_title"),
@@ -205,4 +235,8 @@ def clean_market_title(m):
         if x
     )
 
-    return re.sub(r"\s+", " ", text).strip()
+    return re.sub(
+        r"\s+",
+        " ",
+        text,
+    ).strip()
