@@ -9,9 +9,7 @@ class KalshiClient:
         self.base_url = base_url.rstrip("/")
         self.s = requests.Session()
         self.s.headers.update(
-            {
-                "User-Agent": USER_AGENT,
-            }
+            {"User-Agent": USER_AGENT}
         )
 
     def markets(
@@ -38,64 +36,44 @@ class KalshiClient:
         r.raise_for_status()
         return r.json()
 
-    @staticmethod
-    def _normalized_market(market):
-        return {
-            str(key).strip().lower().replace(" ", "_"): value
-            for key, value in market.items()
+    def events(
+        self,
+        status="open",
+        limit=200,
+        cursor=None,
+    ):
+        params = {
+            "status": status,
+            "limit": limit,
+            "with_nested_markets": "true",
         }
 
-    @classmethod
-    def _is_combo_market(cls, market):
-        normalized = cls._normalized_market(market)
+        if cursor:
+            params["cursor"] = cursor
 
-        ticker = str(
-            normalized.get("ticker") or ""
-        ).upper()
-
-        event_ticker = str(
-            normalized.get("event_ticker") or ""
-        ).upper()
-
-        multivariate_ticker = str(
-            normalized.get("multivariate_event_ticker") or ""
-        ).upper()
-
-        collection = str(
-            normalized.get("mve_collection_ticker") or ""
-        ).upper()
-
-        legs = normalized.get("mve_selected_legs")
-
-        text = " ".join(
-            [
-                ticker,
-                event_ticker,
-                multivariate_ticker,
-                collection,
-            ]
+        r = self.s.get(
+            f"{self.base_url}/events",
+            params=params,
+            timeout=20,
         )
 
-        return (
-            "CROSSCATEGORY" in text
-            or "SHARD" in text
-            or "MULTILEG" in text
-            or "PARLAY" in text
-            or bool(legs)
-        )
+        r.raise_for_status()
+        return r.json()
 
     @staticmethod
     def _has_usable_price(market):
-        values = [
-            market.get("yes_ask"),
-            market.get("yes_bid"),
-            market.get("last_price"),
-            market.get("yes_ask_dollars"),
-            market.get("yes_bid_dollars"),
-            market.get("last_price_dollars"),
+        fields = [
+            "yes_ask_dollars",
+            "yes_bid_dollars",
+            "last_price_dollars",
+            "yes_ask",
+            "yes_bid",
+            "last_price",
         ]
 
-        for value in values:
+        for field in fields:
+            value = market.get(field)
+
             if value is None:
                 continue
 
@@ -103,7 +81,7 @@ class KalshiClient:
                 if float(value) > 0:
                     return True
             except (TypeError, ValueError):
-                continue
+                pass
 
         return False
 
@@ -116,28 +94,72 @@ class KalshiClient:
         cursor = None
         pages = 0
 
-        while len(out) < max_items and pages < max_pages:
+        while (
+            len(out) < max_items
+            and pages < max_pages
+        ):
             pages += 1
 
-            data = self.markets(
+            data = self.events(
                 status="open",
-                limit=100,
+                limit=200,
                 cursor=cursor,
             )
 
-            markets = data.get("markets", [])
+            events = data.get("events", [])
 
-            if not markets:
+            if not events:
                 break
 
-            for market in markets:
-                if self._is_combo_market(market):
-                    continue
+            for event in events:
+                event_title = str(
+                    event.get("title") or ""
+                ).strip()
 
-                if not self._has_usable_price(market):
-                    continue
+                event_subtitle = str(
+                    event.get("sub_title") or ""
+                ).strip()
 
-                out.append(market)
+                category = str(
+                    event.get("category") or ""
+                ).strip()
+
+                series_ticker = str(
+                    event.get("series_ticker") or ""
+                ).strip()
+
+                for market in event.get(
+                    "markets", []
+                ):
+                    if not self._has_usable_price(
+                        market
+                    ):
+                        continue
+
+                    # Preserve event information so
+                    # the sports classifier can see it.
+                    market = dict(market)
+
+                    market["_event_title"] = (
+                        event_title
+                    )
+
+                    market["_event_subtitle"] = (
+                        event_subtitle
+                    )
+
+                    market["_event_category"] = (
+                        category
+                    )
+
+                    market["_series_ticker"] = (
+                        series_ticker
+                    )
+
+                    out.append(market)
+
+                    if len(out) >= max_items:
+                        break
 
                 if len(out) >= max_items:
                     break
@@ -147,13 +169,14 @@ class KalshiClient:
             if not cursor:
                 break
 
-            time.sleep(0.75)
+            time.sleep(0.5)
 
         return out[:max_items]
 
     def orderbook(self, ticker):
         r = self.s.get(
-            f"{self.base_url}/markets/{ticker}/orderbook",
+            f"{self.base_url}/markets/"
+            f"{ticker}/orderbook",
             timeout=20,
         )
 
